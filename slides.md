@@ -20,6 +20,16 @@
 >
 > -- Wikipedia
 
+Note:
+  By default, your code is always running a thread. Even if you don't create any
+  new threads, there's always at least one: the main thread.
+
+      Thread.main
+      Thread.current
+      Thread.new {}
+
+  When the main thread exits, all other threads are immediately terminated and
+  the Ruby process exits.
 
 
 # What's in it for me?
@@ -105,6 +115,10 @@ end.each(&:value)
 2. To facilitate the C extension API
 3. To reduce the likelihood of race conditions in your Ruby code
 
+Note:
+  A race condition involves two threads racing to perform an operation on some
+  shared state.
+
 
 ## What is possible with MRI?
 ``` ruby
@@ -139,8 +153,10 @@ Note:
 1. Don't allow concurrent modification,
 1. or protect concurrent modification!
 
+
+    @results ||= "some value"
+
 Note:
-}}} images/fightclubpicture.jpg
 * Anything where there is only one shared instance is a global
 
 
@@ -151,10 +167,10 @@ Note:
     * unpredictable results
 
 Note:
-The biggest problem cused when data modification is not threadsafe. In that
-case, you will have corrupt data. If your application is heavily based on data,
-you're fucked. Your app will give you unpredictable results, mostly under high
-load. And you won't be able to track these bugs in dev environment.
+  The biggest problem cused when data modification is not threadsafe. In that
+  case, you will have corrupt data. If your application is heavily based on data,
+  you're fucked. Your app will give you unpredictable results, mostly under high
+  load. And you won't be able to track these bugs in dev environment.
 
 
 ## How can I write threadsafe code?
@@ -164,19 +180,111 @@ load. And you won't be able to track these bugs in dev environment.
 * Use resource pools
 * Avoid lazy-loading
 * Prefer data structures over mutexes
+* Use immutable objects
 
 
-### Avoid or protect concurrent data modification
+## Avoid or protect concurrent data modification
 
 
 ### Mutexes
 
+    shared_mutex_accross_threads = Mutex.new
+    mutex.lock
+    mutex.unlock
+    mutex.synchronize {}
 
-### Queue, ConditionalVariable
+Note:
+  The name 'mutex' is shorthand for 'mutual exclusion.' If you wrap some section
+  of your code with a mutex, you guarantee that no two threads can enter that
+  section at the same time.
 
+
+* Must be shared between the threads
+* It has performance tradeoffs (mostly on Rubinius, JRuby)
+* You should choose the place of lock carefully
+* You should lock the smallest possible part of the code
+* Avoid deadlocks
+
+Note:
+  A deadlock occurs when one thread is blocked waiting for a resource from
+  another thread (like blocking on a mutex), while this other thread is itself
+  blocked waiting for a resource.
+
+
+### ConditionalVariable
+These can be used to communicate between threads to synchronize resource access.
+
+* Thread A produces items into an array
+* Thread B waits for the items (conditional variable)
+* When Th. A signals through the cond. var.
+* Th. B can access the new item from the array
+
+
+``` ruby
+array = []
+mutex = Mutex.new
+cond_var = ConditionalVariable.new
+
+Thread.new do
+  10.times do
+    mutex.synchronize do
+      array << rand
+      cond_var.signal
+    end
+  end
+end
+Thread.new do
+  10.times do
+    mutex.synchronize do
+      cond_var.wait(mutex) while array.empty?
+      puts "Processing #{array.shift}"
+    end
+  end
+end
+```
+
+Note:
+  A ConditionVariable can be used to signal one (or many) threads when some
+  event happens, or some state changes, whereas mutexes are a means of
+  synchronizing access to resources.
+
+
+### Queue
+The only thread-safe data structure from standard lib.
+
+* `#push` and `#pop`
+* blocks on `#pop`
+
+Note:
+  You might be thinking: "With all of the great concurrency support available to
+  Java on the JVM, surely the JRuby Array and Hash are thread-safe?" They're not.
+  For the exact reason mentioned above, using a thread-safe data structure in
+  a single-threaded context would reduce performance.
 
 
 # How many threads do I need?
+* It depends
+* There is no golden number
+* You have to measure
 
 
 ## CPU-bound vs IO-bound
+
+Note:
+  With MRI, there is no difference between threaded and non-threaded code,
+  because the GIL locks the execution if it's a CPU-bound task.
+
+  But if you have IO heavy operations, you can do them in paralell.
+
+
+
+# Further topics...
+* Actor model - Celluloid
+* Lock-less CAS (compare and set)
+* Pools
+
+
+
+## Thank you!
+# Any questions?
+
