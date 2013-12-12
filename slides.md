@@ -38,8 +38,6 @@ Note:
 
 # What's in it for me?
 
-Note:
-  Why should you care about this whole thing?
 
 ## Cheaper concurrency
 * Cheaper in memory usage
