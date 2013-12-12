@@ -5,7 +5,7 @@
 <h3>Who am I?</h3>
 <h2>Gergő Sulymosi</h2>
 <p>
-  chief git blame analyst at DiNa<br>
+  chief git blame analyst at [DiNa](http://digitalnatives.hu)<br>
   Github/twitter @trekdemo
 </p>
 
@@ -20,26 +20,35 @@
 >
 > -- Wikipedia
 
+
+``` ruby
+Thread.main
+Thread.current
+Thread.new {}
+```
+
 Note:
   By default, your code is always running a thread. Even if you don't create any
   new threads, there's always at least one: the main thread.
 
-      Thread.main
-      Thread.current
-      Thread.new {}
-
+  Major difference between regular and main thread:
   When the main thread exits, all other threads are immediately terminated and
   the Ruby process exits.
 
 
 # What's in it for me?
 
+Note:
+  Why should you care about this whole thing?
 
 ## Cheaper concurrency
 * Cheaper in memory usage
 * Less overhead than spawning a process
 
-Note: memory management (process vs thread - copy vs sharing)
+Note:
+  forking processes could be sparing -- copy-on-write
+  mark-and-sweep before 2.0 not CoW friendly
+  bitmap marking in 2.0 CoW friendly -- you can use this perk
 
 
 ## Code organization
@@ -49,12 +58,14 @@ Note: memory management (process vs thread - copy vs sharing)
 * [More...](http://www.jstorimer.com/blogs/workingwithcode/7766063-threads-not-just-for-optimizations)
 
 Note:
-organizing code (handling signals, etc.)
-http://www.jstorimer.com/blogs/workingwithcode/7766063-threads-not-just-for-optimizations
+  organizing code (handling signals, etc.)
+  http://www.jstorimer.com/blogs/workingwithcode/7766063-threads-not-just-for-optimizations
+
+  In ruby there are 2 threads after you launch the interpreter.
 
 
 
-# Concurrency<br> vs.<br>  Parallelism
+# Concurrency<br> vs.<br> Parallelism
 
 
 Concurrency and parallelism are two related but distinct concepts.
@@ -66,6 +77,10 @@ not necessarily going to be executed simultaniusly.
 
 **Parallelism**
 : Task A and task B both running in the same time, simultaniusly.
+
+Note:
+  Concurrency: they don't have to run simultaniusly
+  Concurrency: same things, but they run simultaniusly
 
 
 <pre>
@@ -91,9 +106,13 @@ Paralell
 * < 1.9 [Green threads](http://en.wikipedia.org/wiki/Green_threads)
 * \> 1.9 Native OS threads and fibers GIL/GVL
 
+Note:
+  Green threads managed by the VM, there is no real thread behind them
+  Fibers are not real threads, their management is done by the developer
 
 
-# What is GIL a.k.a. GVL a.k.a. global lock?
+
+# What is GIL <span style="text-transform:lowercase;">a.k.a.</span> GVL <span style="text-transform:lowercase;">a.k.a.</span> global lock?
 * The GIL is a global lock around the execution of Ruby code.
 * The biggest implication is that Ruby code will never run in parallel on MRI.
 
@@ -107,6 +126,10 @@ require 'digest/md5'
   end
 end.each(&:value)
 ```
+
+Note:
+  This computation will run simultaniusly in 3 threads with jruby, rubinius
+  and concurrently on mri.
 
 
 ## What's the reason for it?
@@ -157,7 +180,15 @@ Note:
     @results ||= "some value"
 
 Note:
-* Anything where there is only one shared instance is a global
+  * Anything where there is only one shared instance is a global
+
+
+## Shorthand for
+
+    if @result.nil?
+      temp = "some value"
+      @result = temp
+    end
 
 
 ## What happens if my code is not threadsafe?
@@ -181,6 +212,13 @@ Note:
 * Avoid lazy-loading
 * Prefer data structures over mutexes
 * Use immutable objects
+
+Note:
+  AST: It's the DOM of your code
+  Lazy-loading: require not thread-safe, deadlocks
+  Avoid data structures: hide the low level mutex management with data
+  structures
+  Immutable objects: objects that can't be modified after the initialization
 
 
 ## Avoid or protect concurrent data modification
@@ -250,31 +288,34 @@ Note:
 
 
 ### Queue
-The only thread-safe data structure from standard lib.
+The only thread-safe data structure from standard lib. Can be implemented with
+an Array, a Mutex and a ConditionalVariable.
 
 * `#push` and `#pop`
 * blocks on `#pop`
 
 Note:
   You might be thinking: "With all of the great concurrency support available to
-  Java on the JVM, surely the JRuby Array and Hash are thread-safe?" They're not.
-  For the exact reason mentioned above, using a thread-safe data structure in
-  a single-threaded context would reduce performance.
+  Java on the JVM, surely the JRuby Array and Hash are thread-safe?"
+
+  They're not.  For the exact reason mentioned above, using a thread-safe data
+  structure in a single-threaded context would reduce performance.
 
 
 # How many threads do I need?
-* It depends
-* There is no golden number
-* You have to measure
+
+Note:
+  * It depends
+  * There is no golden number
+  * You have to measure
 
 
 ## CPU-bound vs IO-bound
 
 Note:
-  With MRI, there is no difference between threaded and non-threaded code,
-  because the GIL locks the execution if it's a CPU-bound task.
-
-  But if you have IO heavy operations, you can do them in paralell.
+  * With MRI, there is no difference between threaded and non-threaded code,
+    because the GIL locks the execution if it's a CPU-bound task.
+  * But if you have IO heavy operations, you can do them in paralell.
 
 
 
