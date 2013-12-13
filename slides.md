@@ -247,7 +247,7 @@ Note:
   blocked waiting for a resource.
 
 
-### ConditionalVariable
+### ConditionVariable
 These can be used to communicate between threads to synchronize resource access.
 
 * Thread A produces items into an array
@@ -257,13 +257,16 @@ These can be used to communicate between threads to synchronize resource access.
 
 
 ``` ruby
+require 'thread'
+
 array = []
 mutex = Mutex.new
-cond_var = ConditionalVariable.new
+cond_var = ConditionVariable.new
 
 Thread.new do
   10.times do
     mutex.synchronize do
+      sleep(rand)
       array << rand
       cond_var.signal
     end
@@ -287,7 +290,7 @@ Note:
 
 ### Queue
 The only thread-safe data structure from standard lib. Can be implemented with
-an Array, a Mutex and a ConditionalVariable.
+an Array, a Mutex and a ConditionVariable.
 
 * `#push` and `#pop`
 * blocks on `#pop`
